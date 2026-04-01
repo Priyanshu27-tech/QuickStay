@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { assets, cities } from '../assets/assets'
+import { assets } from '../assets/assets'
 import { useAppContext } from '../context/AppContext.jsx'
 import toast from 'react-hot-toast'
-import LocationMap from "../components/LocationMap"
+import LocationMap from "./LocationMap"
 
 const HotelReg = () => {
 
@@ -11,10 +11,10 @@ const HotelReg = () => {
     const [name, setName] = useState("")
     const [address, setAddress] = useState("")
     const [contact, setContact] = useState("")
-    const [city, setCity] = useState("")
     const [location, setLocation] = useState(null)
 
     const onSubmitHandler = async (event) => {
+
         try {
 
             event.preventDefault()
@@ -28,7 +28,6 @@ const HotelReg = () => {
                 name,
                 contact,
                 address,
-                city,
                 location
             })
 
@@ -56,18 +55,24 @@ const HotelReg = () => {
     }
 
     return (
-        <div className='fixed top-0 bottom-0 left-0 right-0 z-[100] flex items-center justify-center bg-black/70'>
+        <div className='fixed inset-0 z-[100] flex items-center justify-center bg-black/70'>
 
-            <form onSubmit={onSubmitHandler} className='flex bg-white rounded-xl max-w-4xl max-md:mx-2'>
+            <form
+                onSubmit={onSubmitHandler}
+                className='flex bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden max-md:mx-2'
+            >
 
+                {/* Left Image */}
                 <img
                     src={assets.regImage}
                     alt="reg-image"
-                    className='w-1/2 rounded-xl hidden md:block'
+                    className='w-1/2 rounded-xl hidden md:block object-cover'
                 />
 
-                <div className='relative flex flex-col items-center md:w-1/2 p-8 md:p-10 overflow-y-auto max-h-screen'>
+                {/* Right Form */}
+                <div className='relative flex flex-col items-center md:w-1/2 p-8 md:p-10 overflow-y-auto max-h-[90vh]'>
 
+                    {/* Close Button */}
                     <img
                         src={assets.closeIcon}
                         alt="close-icon"
@@ -81,6 +86,7 @@ const HotelReg = () => {
 
                     {/* Hotel Name */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             Hotel Name
                         </label>
@@ -93,26 +99,29 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         />
+
                     </div>
 
                     {/* Address */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
-                            Address
+                            Address (Auto filled from map)
                         </label>
 
                         <input
                             type="text"
-                            placeholder="Type here"
+                            placeholder="Click location on map"
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
-                            required
+                            readOnly
+                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none bg-gray-100'
                         />
+
                     </div>
 
                     {/* Contact */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             Contact
                         </label>
@@ -125,31 +134,10 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         />
+
                     </div>
 
-                    {/* City */}
-                    <div className='w-full mt-4'>
-                        <label className="font-medium text-gray-500">
-                            City
-                        </label>
-
-                        <select
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
-                            required
-                        >
-                            <option value="">Select City</option>
-
-                            {cities.map((c, i) => (
-                                <option key={i} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Map Location */}
+                    {/* Map */}
                     <div className='w-full mt-4'>
 
                         <label className="font-medium text-gray-500">
@@ -157,14 +145,28 @@ const HotelReg = () => {
                         </label>
 
                         <div className='mt-2 rounded overflow-hidden'>
-                            <LocationMap setLocation={setLocation} />
+
+                            <LocationMap
+                                setLocation={(coords) => {
+
+                                    setLocation(coords)
+
+                                    setAddress(
+                                        `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
+                                    )
+
+                                }}
+                            />
+
                         </div>
 
                         {location && (
+
                             <p className='text-sm mt-2 text-gray-600'>
                                 Latitude: {location.lat.toFixed(5)} <br />
                                 Longitude: {location.lng.toFixed(5)}
                             </p>
+
                         )}
 
                     </div>
@@ -178,6 +180,7 @@ const HotelReg = () => {
                     </button>
 
                 </div>
+
             </form>
 
         </div>
