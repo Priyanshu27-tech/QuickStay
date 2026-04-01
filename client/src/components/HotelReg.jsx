@@ -53,6 +53,30 @@ const HotelReg = () => {
             toast.error(error.message)
         }
     }
+    const searchLocation = async () => {
+
+  if(!address) return;
+
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${address}`
+  );
+
+  const data = await res.json();
+
+  if(data.length > 0){
+
+    const coords = {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon)
+    };
+
+    setLocation(coords);
+
+  } else {
+    toast.error("Location not found");
+  }
+
+};
 
     return (
         <div className='fixed inset-0 z-[100] flex items-center justify-center bg-black/70'>
