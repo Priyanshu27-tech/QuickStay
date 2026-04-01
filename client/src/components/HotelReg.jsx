@@ -27,8 +27,8 @@ const HotelReg = () => {
 
             const { data } = await axios.post("/api/hotels/register", {
                 name,
-                contact,
                 city,
+                contact,
                 address,
                 location
             })
@@ -135,6 +135,7 @@ const HotelReg = () => {
 
                     {/* City */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             City
                         </label>
@@ -145,6 +146,7 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         >
+
                             <option value="">Select City</option>
 
                             {cities.map((c,i)=>(
@@ -154,10 +156,12 @@ const HotelReg = () => {
                             ))}
 
                         </select>
+
                     </div>
 
                     {/* Address */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             Location / Address
                         </label>
@@ -177,10 +181,12 @@ const HotelReg = () => {
                         >
                             Find on Map
                         </button>
+
                     </div>
 
                     {/* Contact */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             Contact
                         </label>
@@ -193,10 +199,12 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         />
+
                     </div>
 
                     {/* Map */}
                     <div className='w-full mt-4'>
+
                         <label className="font-medium text-gray-500">
                             Select Hotel Location
                         </label>
@@ -236,6 +244,7 @@ const HotelReg = () => {
                                 Longitude: {location.lng.toFixed(5)}
                             </p>
                         )}
+
                     </div>
 
                     {/* Submit */}
