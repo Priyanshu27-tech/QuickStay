@@ -51,23 +51,13 @@ export const createBooking = async (req, res) => {
     const userId = req.user._id;
 
     if (!room || !checkInDate || !checkOutDate) {
-      return res.json({
-        success: false,
-        message: "Missing required fields."
-      });
+      return res.json({ success: false, message: "Missing required fields." });
     }
 
-    const isAvailable = await checkAvailability({
-      checkInDate,
-      checkOutDate,
-      room
-    });
+    const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
 
     if (!isAvailable) {
-      return res.json({
-        success: false,
-        message: "Room is not available for selected dates."
-      });
+      return res.json({ success: false, message: "Room is not available for selected dates." });
     }
 
     const roomData = await Room.findById(room).populate("hotel");
@@ -77,10 +67,7 @@ export const createBooking = async (req, res) => {
     }
 
     if (!roomData.isAvailable) {
-      return res.json({
-        success: false,
-        message: "Room currently unavailable."
-      });
+      return res.json({ success: false, message: "Room currently unavailable." });
     }
 
     const checkin = new Date(checkInDate);
@@ -92,10 +79,7 @@ export const createBooking = async (req, res) => {
     const nights = (checkout - checkin) / (1000 * 60 * 60 * 24);
 
     if (nights <= 0) {
-      return res.json({
-        success: false,
-        message: "Invalid booking dates."
-      });
+      return res.json({ success: false, message: "Invalid booking dates." });
     }
 
     const totalPrice = nights * roomData.pricePerNight;
@@ -141,48 +125,32 @@ export const createBooking = async (req, res) => {
       `
     }).catch(err => console.error("Email error:", err));
 
-    res.json({
-      success: true,
-      message: "Booking created successfully"
-    });
+    res.json({ success: true, message: "Booking created successfully" });
 
   } catch (error) {
     console.log(error);
-    res.json({
-      success: false,
-      message: error.message
-    });
+    res.json({ success: false, message: error.message });
   }
 };
 
 
-// CREATE STRIPE SESSION
+// CREATE STRIPE SESSION (new booking from RoomDetails page)
 export const createStripeSession = async (req, res) => {
   try {
 
     const { room, checkInDate, checkOutDate, guests } = req.body;
     const userId = req.user._id;
 
-    const isAvailable = await checkAvailability({
-      checkInDate,
-      checkOutDate,
-      room
-    });
+    const isAvailable = await checkAvailability({ checkInDate, checkOutDate, room });
 
     if (!isAvailable) {
-      return res.json({
-        success: false,
-        message: "Room is not available for selected dates."
-      });
+      return res.json({ success: false, message: "Room is not available for selected dates." });
     }
 
     const roomData = await Room.findById(room).populate("hotel");
 
     if (!roomData) {
-      return res.json({
-        success: false,
-        message: "Room not found."
-      });
+      return res.json({ success: false, message: "Room not found." });
     }
 
     const checkin = new Date(checkInDate);
@@ -194,15 +162,11 @@ export const createStripeSession = async (req, res) => {
     const nights = (checkout - checkin) / (1000 * 60 * 60 * 24);
 
     if (nights <= 0) {
-      return res.json({
-        success: false,
-        message: "Invalid dates."
-      });
+      return res.json({ success: false, message: "Invalid dates." });
     }
 
     const totalPrice = nights * roomData.pricePerNight;
 
-    // Create booking with pending status
     const booking = await Booking.create({
       user: userId,
       room,
@@ -217,54 +181,89 @@ export const createStripeSession = async (req, res) => {
     });
 
     const session = await stripe.checkout.sessions.create({
-
       payment_method_types: ["card"],
-
       line_items: [{
         price_data: {
           currency: "inr",
-
           product_data: {
             name: `${roomData.hotel.name} - ${roomData.roomType}`,
             description:
               `Check-in: ${checkin.toDateString()} | ` +
               `Check-out: ${checkout.toDateString()} | ${nights} night(s)`,
-
-            images: roomData.images?.length
-              ? [roomData.images[0]]
-              : []
+            images: roomData.images?.length ? [roomData.images[0]] : []
           },
-
           unit_amount: Math.round(totalPrice * 100)
         },
-
         quantity: 1
       }],
-
       mode: "payment",
-
-      success_url:
-        `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}`,
-
-      cancel_url:
-        `${process.env.CLIENT_URL}/rooms/${room}?payment=cancelled`,
-
-      metadata: {
-        bookingId: booking._id.toString()
-      }
+      success_url: `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}`,
+      cancel_url: `${process.env.CLIENT_URL}/rooms/${room}?payment=cancelled`,
+      metadata: { bookingId: booking._id.toString() }
     });
 
-    res.json({
-      success: true,
-      sessionUrl: session.url
-    });
+    res.json({ success: true, sessionUrl: session.url });
 
   } catch (error) {
     console.log(error);
-    res.json({
-      success: false,
-      message: error.message
+    res.json({ success: false, message: error.message });
+  }
+};
+
+
+// ✅ NEW — STRIPE SESSION FOR EXISTING PENDING BOOKING (Pay Now button in MyBookings)
+export const stripeSessionForExistingBooking = async (req, res) => {
+  try {
+
+    const { bookingId } = req.body;
+
+    const booking = await Booking.findById(bookingId).populate("room hotel");
+
+    if (!booking) {
+      return res.json({ success: false, message: "Booking not found." });
+    }
+
+    // Security: make sure it belongs to this user
+    if (booking.user.toString() !== req.user._id.toString()) {
+      return res.json({ success: false, message: "Unauthorized." });
+    }
+
+    // Already paid — no need to pay again
+    if (booking.isPaid) {
+      return res.json({ success: false, message: "Booking is already paid." });
+    }
+
+    const checkin = new Date(booking.checkInDate);
+    const checkout = new Date(booking.checkOutDate);
+    const nights = (checkout - checkin) / (1000 * 60 * 60 * 24);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [{
+        price_data: {
+          currency: "inr",
+          product_data: {
+            name: `${booking.hotel.name} - ${booking.room.roomType}`,
+            description:
+              `Check-in: ${checkin.toDateString()} | ` +
+              `Check-out: ${checkout.toDateString()} | ${nights} night(s)`,
+            images: booking.room.images?.length ? [booking.room.images[0]] : []
+          },
+          unit_amount: Math.round(booking.totalPrice * 100)
+        },
+        quantity: 1
+      }],
+      mode: "payment",
+      success_url: `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}`,
+      cancel_url: `${process.env.CLIENT_URL}/my-bookings?payment=cancelled`,
+      metadata: { bookingId: booking._id.toString() }
     });
+
+    res.json({ success: true, sessionUrl: session.url });
+
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
   }
 };
 
@@ -278,18 +277,19 @@ export const verifyStripePayment = async (req, res) => {
     const booking = await Booking.findById(bookingId);
 
     if (!booking) {
-      return res.json({
-        success: false,
-        message: "Booking not found."
-      });
+      return res.json({ success: false, message: "Booking not found." });
+    }
+
+    // Already verified — skip silently to avoid duplicate email
+    if (booking.isPaid) {
+      return res.json({ success: true, message: "Already verified." });
     }
 
     booking.isPaid = true;
     booking.status = "confirmed";
-
     await booking.save();
 
-    // Send confirmation email after Stripe payment (background — does not block response)
+    // Send confirmation email (background — does not block response)
     const bookingData = await Booking.findById(bookingId).populate("room hotel user");
     transporter.sendMail({
       from: `"QuickStay" <${process.env.SMTP_USER}>`,
@@ -316,16 +316,10 @@ export const verifyStripePayment = async (req, res) => {
       `
     }).catch(err => console.error("Email error:", err));
 
-    res.json({
-      success: true,
-      message: "Payment verified successfully"
-    });
+    res.json({ success: true, message: "Payment verified successfully" });
 
   } catch (error) {
-    res.json({
-      success: false,
-      message: error.message
-    });
+    res.json({ success: false, message: error.message });
   }
 };
 
@@ -339,16 +333,10 @@ export const getUserBookings = async (req, res) => {
       .populate("room hotel")
       .sort({ createdAt: -1 });
 
-    res.json({
-      success: true,
-      bookings
-    });
+    res.json({ success: true, bookings });
 
   } catch (error) {
-    res.json({
-      success: false,
-      message: error.message
-    });
+    res.json({ success: false, message: error.message });
   }
 };
 
@@ -360,10 +348,7 @@ export const getHotelBookings = async (req, res) => {
     const hotel = await Hotel.findOne({ owner: req.user._id });
 
     if (!hotel) {
-      return res.json({
-        success: false,
-        message: "No hotel found."
-      });
+      return res.json({ success: false, message: "No hotel found." });
     }
 
     const bookings = await Booking
@@ -372,25 +357,14 @@ export const getHotelBookings = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const totalBookings = bookings.length;
-
-    const totalRevenue = bookings.reduce(
-      (acc, b) => acc + b.totalPrice,
-      0
-    );
+    const totalRevenue = bookings.reduce((acc, b) => acc + b.totalPrice, 0);
 
     res.json({
       success: true,
-      dashboardData: {
-        totalBookings,
-        totalRevenue,
-        bookings
-      }
+      dashboardData: { totalBookings, totalRevenue, bookings }
     });
 
   } catch (error) {
-    res.json({
-      success: false,
-      message: error.message
-    });
+    res.json({ success: false, message: error.message });
   }
 };
