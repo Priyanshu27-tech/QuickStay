@@ -3,7 +3,7 @@ import axios from "axios";
 
 const AppContext = createContext();
 
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.baseURL = https://quickstay-71u6.onrender.com;
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
