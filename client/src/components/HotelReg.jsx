@@ -143,7 +143,7 @@ const HotelReg = () => {
 
                         <input
                             type="text"
-                            placeholder="Type location and press Find"
+                            placeholder="Type location or click map"
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
@@ -188,7 +188,14 @@ const HotelReg = () => {
 
                             <LocationMap
                                 location={location}
-                                setLocation={setLocation}
+                                setLocation={(coords) => {
+
+                                    setLocation(coords)
+
+                                    // update location field automatically
+                                    setAddress(`${coords.lat}, ${coords.lng}`)
+
+                                }}
                             />
 
                         </div>
