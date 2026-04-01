@@ -20,7 +20,7 @@ const HotelReg = () => {
             event.preventDefault()
 
             if (!location) {
-                toast.error("Please select hotel location on the map")
+                toast.error("Please select hotel location")
                 return
             }
 
@@ -53,30 +53,38 @@ const HotelReg = () => {
             toast.error(error.message)
         }
     }
+
+    // Search address and move map
     const searchLocation = async () => {
 
-  if(!address) return;
+        if (!address) return
 
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${address}`
-  );
+        try {
 
-  const data = await res.json();
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${address}`
+            )
 
-  if(data.length > 0){
+            const data = await res.json()
 
-    const coords = {
-      lat: parseFloat(data[0].lat),
-      lng: parseFloat(data[0].lon)
-    };
+            if (data.length > 0) {
 
-    setLocation(coords);
+                const coords = {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                }
 
-  } else {
-    toast.error("Location not found");
-  }
+                setLocation(coords)
 
-};
+            } else {
+                toast.error("Location not found")
+            }
+
+        } catch (error) {
+            toast.error("Error finding location")
+        }
+
+    }
 
     return (
         <div className='fixed inset-0 z-[100] flex items-center justify-center bg-black/70'>
@@ -130,16 +138,24 @@ const HotelReg = () => {
                     <div className='w-full mt-4'>
 
                         <label className="font-medium text-gray-500">
-                            Address (Auto filled from map)
+                            Location / Address
                         </label>
 
                         <input
                             type="text"
-                            placeholder="Click location on map"
+                            placeholder="Type location and press Find"
                             value={address}
-                            readOnly
-                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none bg-gray-100'
+                            onChange={(e) => setAddress(e.target.value)}
+                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                         />
+
+                        <button
+                            type="button"
+                            onClick={searchLocation}
+                            className="bg-gray-200 px-3 py-1 rounded mt-2 text-sm"
+                        >
+                            Find on Map
+                        </button>
 
                     </div>
 
@@ -171,15 +187,8 @@ const HotelReg = () => {
                         <div className='mt-2 rounded overflow-hidden'>
 
                             <LocationMap
-                                setLocation={(coords) => {
-
-                                    setLocation(coords)
-
-                                    setAddress(
-                                        `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
-                                    )
-
-                                }}
+                                location={location}
+                                setLocation={setLocation}
                             />
 
                         </div>
@@ -195,7 +204,7 @@ const HotelReg = () => {
 
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Submit */}
                     <button
                         type="submit"
                         className='bg-blue-600 hover:bg-blue-700 transition-all text-white rounded-md py-2 px-4 mt-6 w-full'
