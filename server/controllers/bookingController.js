@@ -113,9 +113,9 @@ export const createBooking = async (req, res) => {
       isPaid: false
     });
 
-    // Send confirmation email
+    // Send confirmation email (background — does not block response)
     const user = await User.findById(userId);
-    await transporter.sendMail({
+    transporter.sendMail({
       from: `"QuickStay" <${process.env.SMTP_USER}>`,
       to: user.email,
       subject: "Booking Confirmed — QuickStay 🏨",
@@ -139,7 +139,7 @@ export const createBooking = async (req, res) => {
           <p style="color: #6b7280; font-size: 14px;">Thank you for choosing <strong>QuickStay</strong>. We wish you a pleasant stay!</p>
         </div>
       `
-    });
+    }).catch(err => console.error("Email error:", err));
 
     res.json({
       success: true,
@@ -289,9 +289,9 @@ export const verifyStripePayment = async (req, res) => {
 
     await booking.save();
 
-    // Send confirmation email after Stripe payment
+    // Send confirmation email after Stripe payment (background — does not block response)
     const bookingData = await Booking.findById(bookingId).populate("room hotel user");
-    await transporter.sendMail({
+    transporter.sendMail({
       from: `"QuickStay" <${process.env.SMTP_USER}>`,
       to: bookingData.user.email,
       subject: "Payment Confirmed — QuickStay 🏨",
@@ -314,7 +314,7 @@ export const verifyStripePayment = async (req, res) => {
           <p style="color: #6b7280; font-size: 14px;">Thank you for choosing <strong>QuickStay</strong>. We wish you a pleasant stay!</p>
         </div>
       `
-    });
+    }).catch(err => console.error("Email error:", err));
 
     res.json({
       success: true,
