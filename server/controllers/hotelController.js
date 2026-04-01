@@ -7,7 +7,7 @@ export const registerHotel = async (req, res) => {
 
   try {
 
-    const { name, address, contact, location } = req.body;
+    const { name, address, contact,city,location } = req.body;
 
     const owner = req.user._id;
 
@@ -27,6 +27,7 @@ export const registerHotel = async (req, res) => {
       address,
       contact,
       owner,
+      city,
       location
     });
 
