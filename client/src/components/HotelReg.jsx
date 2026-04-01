@@ -54,7 +54,7 @@ const HotelReg = () => {
         }
     }
 
-    // Search address and move map
+    // Search location from text input
     const searchLocation = async () => {
 
         if (!address) return
@@ -83,7 +83,6 @@ const HotelReg = () => {
         } catch (error) {
             toast.error("Error finding location")
         }
-
     }
 
     return (
@@ -188,12 +187,25 @@ const HotelReg = () => {
 
                             <LocationMap
                                 location={location}
-                                setLocation={(coords) => {
+                                setLocation={async (coords) => {
 
                                     setLocation(coords)
 
-                                    // update location field automatically
-                                    setAddress(`${coords.lat}, ${coords.lng}`)
+                                    try {
+
+                                        const res = await fetch(
+                                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`
+                                        )
+
+                                        const data = await res.json()
+
+                                        if (data.display_name) {
+                                            setAddress(data.display_name)
+                                        }
+
+                                    } catch (error) {
+                                        console.log(error)
+                                    }
 
                                 }}
                             />
