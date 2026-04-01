@@ -14,14 +14,14 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const ChangeMapView = ({ coords }) => {
+const ChangeMapView = ({ location }) => {
   const map = useMap();
 
   useEffect(() => {
-    if(coords){
-      map.setView([coords.lat, coords.lng], 13);
+    if(location){
+      map.setView([location.lat, location.lng], 13);
     }
-  }, [coords]);
+  }, [location]);
 
   return null;
 };
@@ -31,13 +31,13 @@ const LocationMarker = ({ setLocation }) => {
   const [position, setPosition] = useState(null);
 
   useMapEvents({
-    click(e) {
+    click(e){
       setPosition(e.latlng);
       setLocation(e.latlng);
-    },
+    }
   });
 
-  return position ? <Marker position={position} /> : null;
+  return position ? <Marker position={position}/> : null;
 };
 
 const LocationMap = ({ location, setLocation }) => {
@@ -54,9 +54,9 @@ const LocationMap = ({ location, setLocation }) => {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <ChangeMapView coords={location} />
+      <ChangeMapView location={location}/>
 
-      <LocationMarker setLocation={setLocation} />
+      <LocationMarker setLocation={setLocation}/>
 
     </MapContainer>
   );
