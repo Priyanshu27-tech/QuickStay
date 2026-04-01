@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import Title from '../../components/title.jsx'
+import Title from '../../components/Title.jsx'
 import { useAppContext } from '../../context/AppContext.jsx'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
