@@ -34,7 +34,7 @@ const MyBookings = () => {
   // Stripe Payment Handler
   const handlePayment = async (booking) => {
     try {
-      const { data } = await axios.post('/api/booking/create-stripe-session', {
+      const { data } = await axios.post('/api/booking/stripe-session', {
         room: booking.room._id,
         checkInDate: booking.checkInDate,
         checkOutDate: booking.checkOutDate,
