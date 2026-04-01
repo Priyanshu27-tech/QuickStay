@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { assets } from '../assets/assets'
+import { assets, cities } from '../assets/assets'
 import { useAppContext } from '../context/AppContext.jsx'
 import toast from 'react-hot-toast'
 import LocationMap from "./LocationMap"
@@ -9,6 +9,7 @@ const HotelReg = () => {
     const { setShowHotelReg, axios, setIsOwner, user, setUser } = useAppContext()
 
     const [name, setName] = useState("")
+    const [city, setCity] = useState("")
     const [address, setAddress] = useState("")
     const [contact, setContact] = useState("")
     const [location, setLocation] = useState(null)
@@ -27,6 +28,7 @@ const HotelReg = () => {
             const { data } = await axios.post("/api/hotels/register", {
                 name,
                 contact,
+                city,
                 address,
                 location
             })
@@ -117,7 +119,6 @@ const HotelReg = () => {
 
                     {/* Hotel Name */}
                     <div className='w-full mt-4'>
-
                         <label className="font-medium text-gray-500">
                             Hotel Name
                         </label>
@@ -130,12 +131,33 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         />
+                    </div>
 
+                    {/* City */}
+                    <div className='w-full mt-4'>
+                        <label className="font-medium text-gray-500">
+                            City
+                        </label>
+
+                        <select
+                            value={city}
+                            onChange={(e)=>setCity(e.target.value)}
+                            className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
+                            required
+                        >
+                            <option value="">Select City</option>
+
+                            {cities.map((c,i)=>(
+                                <option key={i} value={c}>
+                                    {c}
+                                </option>
+                            ))}
+
+                        </select>
                     </div>
 
                     {/* Address */}
                     <div className='w-full mt-4'>
-
                         <label className="font-medium text-gray-500">
                             Location / Address
                         </label>
@@ -155,12 +177,10 @@ const HotelReg = () => {
                         >
                             Find on Map
                         </button>
-
                     </div>
 
                     {/* Contact */}
                     <div className='w-full mt-4'>
-
                         <label className="font-medium text-gray-500">
                             Contact
                         </label>
@@ -173,12 +193,10 @@ const HotelReg = () => {
                             className='w-full border border-gray-300 rounded p-2 mt-1 outline-none'
                             required
                         />
-
                     </div>
 
                     {/* Map */}
                     <div className='w-full mt-4'>
-
                         <label className="font-medium text-gray-500">
                             Select Hotel Location
                         </label>
@@ -213,14 +231,11 @@ const HotelReg = () => {
                         </div>
 
                         {location && (
-
                             <p className='text-sm mt-2 text-gray-600'>
                                 Latitude: {location.lat.toFixed(5)} <br />
                                 Longitude: {location.lng.toFixed(5)}
                             </p>
-
                         )}
-
                     </div>
 
                     {/* Submit */}
