@@ -3,6 +3,7 @@ import Hotel from "../models/Hotel.js";
 import Room from "../models/Room.js";
 import User from "../models/User.js";
 import Stripe from "stripe";
+import transporter from "../configs/nodemailer.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -11,7 +12,7 @@ export const checkAvailability = async ({ checkInDate, checkOutDate, room }) => 
   try {
     const bookings = await Booking.find({
       room,
-      status: "confirmed",   // ✅ FIXED (removed pending)
+      status: "confirmed",
       checkInDate: { $lt: new Date(checkOutDate) },
       checkOutDate: { $gt: new Date(checkInDate) }
     });
@@ -110,6 +111,34 @@ export const createBooking = async (req, res) => {
       status: "confirmed",
       paymentMethod: "Pay At Hotel",
       isPaid: false
+    });
+
+    // Send confirmation email
+    const user = await User.findById(userId);
+    await transporter.sendMail({
+      from: `"QuickStay" <${process.env.SMTP_USER}>`,
+      to: user.email,
+      subject: "Booking Confirmed — QuickStay 🏨",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <h2 style="color: #111827;">Your Booking is Confirmed! ✅</h2>
+          <p style="color: #374151;">Hi <strong>${user.name}</strong>, your room has been successfully booked.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+          <h3 style="color: #111827;">Booking Details</h3>
+          <table style="width: 100%; border-collapse: collapse; color: #374151;">
+            <tr><td style="padding: 8px 0;"><strong>Hotel</strong></td><td>${roomData.hotel.name}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Room Type</strong></td><td>${roomData.roomType}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Check-in</strong></td><td>${checkin.toDateString()}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Check-out</strong></td><td>${checkout.toDateString()}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Nights</strong></td><td>${nights}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Guests</strong></td><td>${guests || 1}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Total Amount</strong></td><td>₹${totalPrice}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Payment</strong></td><td>Pay At Hotel</td></tr>
+          </table>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+          <p style="color: #6b7280; font-size: 14px;">Thank you for choosing <strong>QuickStay</strong>. We wish you a pleasant stay!</p>
+        </div>
+      `
     });
 
     res.json({
@@ -259,6 +288,33 @@ export const verifyStripePayment = async (req, res) => {
     booking.status = "confirmed";
 
     await booking.save();
+
+    // Send confirmation email after Stripe payment
+    const bookingData = await Booking.findById(bookingId).populate("room hotel user");
+    await transporter.sendMail({
+      from: `"QuickStay" <${process.env.SMTP_USER}>`,
+      to: bookingData.user.email,
+      subject: "Payment Confirmed — QuickStay 🏨",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 8px;">
+          <h2 style="color: #111827;">Payment Received & Booking Confirmed! ✅</h2>
+          <p style="color: #374151;">Hi <strong>${bookingData.user.name}</strong>, your payment was successful and your room is booked.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+          <h3 style="color: #111827;">Booking Details</h3>
+          <table style="width: 100%; border-collapse: collapse; color: #374151;">
+            <tr><td style="padding: 8px 0;"><strong>Hotel</strong></td><td>${bookingData.hotel.name}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Room Type</strong></td><td>${bookingData.room.roomType}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Check-in</strong></td><td>${bookingData.checkInDate.toDateString()}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Check-out</strong></td><td>${bookingData.checkOutDate.toDateString()}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Guests</strong></td><td>${bookingData.guests}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Total Paid</strong></td><td>₹${bookingData.totalPrice}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Payment</strong></td><td>Stripe (Online)</td></tr>
+          </table>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+          <p style="color: #6b7280; font-size: 14px;">Thank you for choosing <strong>QuickStay</strong>. We wish you a pleasant stay!</p>
+        </div>
+      `
+    });
 
     res.json({
       success: true,
