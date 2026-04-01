@@ -1,6 +1,6 @@
 import React from "react";
 
-const title = ({ title, subTitle, align, font }) => {
+const Title = ({ title, subTitle, align, font }) => {
   return (
     <div
       className={`flex flex-col justify-center items-center text-center ${
@@ -18,4 +18,4 @@ const title = ({ title, subTitle, align, font }) => {
   );
 };
 
-export default title ;
+export default Title ;
