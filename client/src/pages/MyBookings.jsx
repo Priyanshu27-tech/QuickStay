@@ -37,6 +37,7 @@ const MyBookings = () => {
 
     // Stripe redirect verification
     const params = new URLSearchParams(window.location.search)
+
     const payment = params.get("payment")
     const bookingId = params.get("bookingId")
 
@@ -45,13 +46,19 @@ const MyBookings = () => {
       const verifyPayment = async () => {
         try {
 
-          const { data } = await axios.post("/api/booking/verify-stripe", { bookingId })
+          const { data } = await axios.post("/api/booking/verify-stripe", {
+            bookingId
+          })
 
           if (data.success) {
+
             toast.success("Payment successful!")
+
             fetchBookings()
+
             // Remove query params from URL
             window.history.replaceState({}, document.title, "/my-bookings")
+
           } else {
             toast.error(data.message)
           }
@@ -64,19 +71,14 @@ const MyBookings = () => {
       verifyPayment()
     }
 
-    if (payment === "cancelled") {
-      toast.error("Payment cancelled.")
-      window.history.replaceState({}, document.title, "/my-bookings")
-    }
-
   }, [])
 
 
-  // ✅ FIXED — Pay Now uses existing bookingId, no duplicate booking created
+  // Stripe Payment Handler
   const handlePayment = async (booking) => {
     try {
 
-      const { data } = await axios.post('/api/booking/pay-existing', {
+      const { data } = await axios.post('/api/booking/stripe-session-existing', {
         bookingId: booking._id
       })
 
@@ -145,6 +147,7 @@ const MyBookings = () => {
 
                   <p className='font-playfair text-2xl'>
                     {booking.hotel?.name}
+
                     <span className='font-inter text-sm'>
                       ({booking.room?.roomType})
                     </span>
@@ -211,13 +214,16 @@ const MyBookings = () => {
 
                 </div>
 
+
                 {!booking.isPaid && (
+
                   <button
                     onClick={() => handlePayment(booking)}
                     className='px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer'
                   >
                     Pay Now
                   </button>
+
                 )}
 
               </div>
