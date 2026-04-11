@@ -274,6 +274,59 @@ export const verifyStripePayment = async (req, res) => {
 };
 
 
+// STRIPE SESSION FOR EXISTING BOOKING (Pay Now from MyBookings)
+export const stripeSessionForExistingBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+
+    const booking = await Booking.findById(bookingId).populate({
+      path: 'room',
+      populate: { path: 'hotel' }
+    });
+
+    if (!booking) {
+      return res.json({ success: false, message: "Booking not found." });
+    }
+
+    if (booking.isPaid) {
+      return res.json({ success: false, message: "Booking is already paid." });
+    }
+
+    const checkin = new Date(booking.checkInDate);
+    const checkout = new Date(booking.checkOutDate);
+    const nights = (checkout - checkin) / (1000 * 60 * 60 * 24);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [{
+        price_data: {
+          currency: "inr",
+          product_data: {
+            name: `${booking.room.hotel.name} - ${booking.room.roomType}`,
+            description:
+              `Check-in: ${checkin.toDateString()} | ` +
+              `Check-out: ${checkout.toDateString()} | ${nights} night(s)`,
+            images: booking.room.images?.length ? [booking.room.images[0]] : []
+          },
+          unit_amount: Math.round(booking.totalPrice * 100)
+        },
+        quantity: 1
+      }],
+      mode: "payment",
+      success_url: `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}`,
+      cancel_url: `${process.env.CLIENT_URL}/my-bookings?payment=cancelled`,
+      metadata: { bookingId: booking._id.toString() }
+    });
+
+    res.json({ success: true, sessionUrl: session.url });
+
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+
 // GET USER BOOKINGS
 export const getUserBookings = async (req, res) => {
   try {
