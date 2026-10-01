@@ -3,6 +3,7 @@ import "dotenv/config";
 import cors from "cors";
 import connectDB from "./configs/db.js";
 import connectCloudinary from "./configs/cloudinary.js";
+import { stripeWebhook } from "./controllers/bookingController.js"; // ✅ added
 
 import authRouter    from "./routes/authRoutes.js";
 import userRouter    from "./routes/userRoutes.js";
@@ -23,6 +24,14 @@ app.use(cors({
     ],
     credentials: true
 }));
+
+// ✅ Stripe webhook: MUST be before express.json() and use the raw body
+app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    stripeWebhook
+);
+
 app.use(express.json());
 
 app.get("/", (req, res) => res.send("QuickStay API is working ✅"));
