@@ -11,7 +11,7 @@ export const checkAvailability = async ({ checkInDate, checkOutDate, room }) => 
   try {
     const bookings = await Booking.find({
       room,
-      status: "confirmed",   // ✅ FIXED (removed pending)
+      status: "confirmed",
       checkInDate: { $lt: new Date(checkOutDate) },
       checkOutDate: { $gt: new Date(checkInDate) }
     });
@@ -215,7 +215,7 @@ export const createStripeSession = async (req, res) => {
       mode: "payment",
 
       success_url:
-        `${process.env.CLIENT_URL}/rooms/${room}?payment=success&bookingId=${booking._id}`,
+        `${process.env.CLIENT_URL}/rooms/${room}?payment=success&bookingId=${booking._id}&session_id={CHECKOUT_SESSION_ID}`,
 
       cancel_url:
         `${process.env.CLIENT_URL}/rooms/${room}?payment=cancelled`,
@@ -240,11 +240,48 @@ export const createStripeSession = async (req, res) => {
 };
 
 
-// VERIFY STRIPE PAYMENT
+// STRIPE WEBHOOK (Stripe calls this after payment)
+export const stripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body, // raw body (set in server.js)
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.log("Webhook signature error:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+
+      if (session.payment_status === "paid") {
+        await Booking.findByIdAndUpdate(session.metadata.bookingId, {
+          isPaid: true,
+          status: "confirmed"
+        });
+        console.log("✅ Booking paid:", session.metadata.bookingId);
+      }
+    }
+  } catch (error) {
+    console.log("Webhook handler error:", error.message);
+    return res.status(500).send("Webhook handler failed");
+  }
+
+  res.json({ received: true });
+};
+
+
+// VERIFY STRIPE PAYMENT (checks with Stripe, then updates booking)
 export const verifyStripePayment = async (req, res) => {
   try {
 
-    const { bookingId } = req.body;
+    const { bookingId, sessionId } = req.body;
 
     const booking = await Booking.findById(bookingId);
 
@@ -255,9 +292,35 @@ export const verifyStripePayment = async (req, res) => {
       });
     }
 
+    // Already updated (for example by the webhook)
+    if (booking.isPaid) {
+      return res.json({
+        success: true,
+        message: "Payment already verified"
+      });
+    }
+
+    if (!sessionId) {
+      return res.json({
+        success: false,
+        message: "Payment is being processed. Please refresh in a moment."
+      });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (
+      session.payment_status !== "paid" ||
+      session.metadata.bookingId !== bookingId
+    ) {
+      return res.json({
+        success: false,
+        message: "Payment not completed."
+      });
+    }
+
     booking.isPaid = true;
     booking.status = "confirmed";
-
     await booking.save();
 
     res.json({
@@ -313,7 +376,7 @@ export const stripeSessionForExistingBooking = async (req, res) => {
         quantity: 1
       }],
       mode: "payment",
-      success_url: `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}`,
+      success_url: `${process.env.CLIENT_URL}/my-bookings?payment=success&bookingId=${booking._id}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.CLIENT_URL}/my-bookings?payment=cancelled`,
       metadata: { bookingId: booking._id.toString() }
     });
@@ -370,10 +433,10 @@ export const getHotelBookings = async (req, res) => {
 
     const totalBookings = bookings.length;
 
-    const totalRevenue = bookings.reduce(
-      (acc, b) => acc + b.totalPrice,
-      0
-    );
+    // Only count paid bookings in revenue
+    const totalRevenue = bookings
+      .filter((b) => b.isPaid)
+      .reduce((acc, b) => acc + b.totalPrice, 0);
 
     res.json({
       success: true,
