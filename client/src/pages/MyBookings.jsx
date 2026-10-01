@@ -40,14 +40,17 @@ const MyBookings = () => {
 
     const payment = params.get("payment")
     const bookingId = params.get("bookingId")
+    const sessionId = params.get("session_id") // ✅ added
 
     if (payment === "success" && bookingId) {
 
       const verifyPayment = async () => {
         try {
 
+          // ✅ send sessionId so the server can confirm the payment with Stripe
           const { data } = await axios.post("/api/booking/verify-stripe", {
-            bookingId
+            bookingId,
+            sessionId
           })
 
           if (data.success) {
@@ -69,6 +72,11 @@ const MyBookings = () => {
       }
 
       verifyPayment()
+    }
+
+    if (payment === "cancelled") {
+      toast.error("Payment cancelled.")
+      window.history.replaceState({}, document.title, "/my-bookings")
     }
 
   }, [])
