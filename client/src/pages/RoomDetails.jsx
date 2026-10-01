@@ -24,14 +24,18 @@ const RoomDetails = () => {
   useEffect(() => {
     const payment = searchParams.get('payment')
     const bookingId = searchParams.get('bookingId')
+    const sessionId = searchParams.get('session_id') // ✅ added
 
     if (payment === 'success' && bookingId) {
-      // Verify payment on server
-      axios.post('/api/booking/verify-stripe', { bookingId })
+      // ✅ send sessionId so the server can confirm the payment with Stripe
+      axios.post('/api/booking/verify-stripe', { bookingId, sessionId })
         .then(({ data }) => {
           if (data.success) {
             toast.success('Payment successful! Booking confirmed 🎉')
             navigate('/my-bookings')
+          } else {
+            // ✅ show the real reason instead of failing silently
+            toast.error(data.message || 'Payment verification failed')
           }
         })
         .catch(() => toast.error('Payment verification failed'))
