@@ -5,6 +5,16 @@ const AppContext = createContext();
 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+// ✅ Attach the token on EVERY request, read fresh from localStorage.
+// This runs at request time, so it never races with React effects.
+axios.interceptors.request.use((config) => {
+  const t = localStorage.getItem("token");
+  if (t && t !== "undefined" && t !== "null") {
+    config.headers.Authorization = `Bearer ${t}`;
+  }
+  return config;
+});
+
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("user")) } catch { return null }
@@ -13,7 +23,7 @@ export const AppProvider = ({ children }) => {
   const [showHotelReg, setShowHotelReg] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [rooms, setRooms] = useState([]);
-  const [searchedCities, setSearchedCities] = useState([]);  // ← added
+  const [searchedCities, setSearchedCities] = useState([]);
 
   const currency = "₹";
   const isSignedIn = !!token;
@@ -48,16 +58,8 @@ export const AppProvider = ({ children }) => {
     setToken(null);
     setIsOwner(false);
     setShowHotelReg(false);
-    setSearchedCities([]);  // ← clear on logout
+    setSearchedCities([]);
   };
-
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common["Authorization"];
-    }
-  }, [token]);
 
   useEffect(() => {
     if (user) {
@@ -74,7 +76,7 @@ export const AppProvider = ({ children }) => {
       axios,
       rooms, setRooms, fetchRooms,
       currency,
-      searchedCities, setSearchedCities,  // ← added
+      searchedCities, setSearchedCities,
     }}>
       {children}
     </AppContext.Provider>
